@@ -20,7 +20,6 @@
             color: #333;
         }
 
-        /* Algemene container */
         .container {
             background: white;
             border-radius: 20px;
@@ -47,8 +46,8 @@
         .btn:active { transform: translateY(5px); box-shadow: none; }
         .btn-green { background: #2ecc71; box-shadow: 0 5px 0 #27ae60; }
         .btn-purple { background: #9b59b6; box-shadow: 0 5px 0 #8e44ad; }
+        .btn-blue { background: #3498db; box-shadow: 0 5px 0 #2980b9; }
         
-        /* Login scherm */
         #loginScreen input {
             font-size: 1.5rem;
             padding: 10px;
@@ -60,7 +59,6 @@
             text-align: center;
         }
 
-        /* Home scherm */
         .home-box {
             background: #fef9e7;
             border: 5px solid #f39c12;
@@ -110,15 +108,36 @@
             border-radius: 5px;
         }
 
-        /* Youtube */
         iframe { width: 100%; max-width: 560px; height: 315px; border: none; border-radius: 10px; margin-top: 20px; }
 
         /* Stopmotion */
-        #videoPreview { width: 100%; max-width: 500px; border-radius: 10px; background: black; }
+        #cameraPreview {
+            width: 100%; max-width: 500px; border-radius: 10px; background: black;
+            border: 4px solid #333;
+        }
+        
+        .frames-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .frames-grid img {
+            width: 100%;
+            border: 2px solid white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
         .video-list { max-height: 200px; overflow-y: auto; background: #f0f0f0; padding: 10px; border-radius: 10px; }
         .video-list video { width: 150px; margin: 5px; }
 
-        /* Resetknop */
         .reset-btn { background: #2c3e50; color: white; position: fixed; bottom: 10px; right: 10px; }
     </style>
 </head>
@@ -195,12 +214,24 @@
     <!-- Stopmotion Sectie -->
     <div id="stopMotionSection" class="container hidden">
         <h2>🎬 Stopmotion Maken</h2>
-        <p><strong>Opdracht:</strong> Laat zien dat Bartimeüs NIET luistert als de mensen tegen hem zeggen dat hij zijn mond moet houden! Neem een filmpje op van maximaal 1 minuut.</p>
+        <p><strong>Opdracht:</strong> Laat zien dat Bartimeüs NIET luistert als de mensen tegen hem zeggen dat hij zijn mond moet houden! Verplaats de figuurtjes, maak foto's en zet ze om naar een filmpje.</p>
         
-        <video id="videoPreview" autoplay muted></video>
+        <h3>Camera Preview</h3>
+        <video id="cameraPreview" autoplay playsinline></video>
         <br><br>
-        <button id="startBtn" class="btn btn-green" onclick="startRecording()">Start Opname 🎥</button>
-        <button id="stopBtn" class="btn hidden" onclick="stopRecording()">Stop en Upload ⏹️</button>
+
+        <button class="btn btn-blue" onclick="takePhoto()">📸 Maak Foto</button>
+        <br>
+        <p id="frameCount">Aantal foto's: 0</p>
+
+        <h3>Gemaakte foto's:</h3>
+        <div id="framesGrid" class="frames-grid">
+            <!-- Hier komen de foto's -->
+        </div>
+        <br>
+
+        <button class="btn btn-green" onclick="generateVideo()">🎥 Maak Film van Foto's</button>
+        <br>
         <p id="recordStatus"></p>
 
         <h3>Eerder gemaakte filmpjes van de groep:</h3>
@@ -232,8 +263,11 @@
         let currentSlide = 0;
         let currentQuizIndex = 0;
         let score = 0;
-        let mediaRecorder;
-        let recordedChunks = [];
+
+        // Stopmotion variabelen
+        let cameraStream = null;
+        let frames = [];
+        const FRAME_DURATION = 500; // 500ms = 2 frames per seconde (voor 1 minuut: 120 foto's)
 
         const facts = [
             "Je knippert meer dan tienduizend keer per dag met je ogen.",
@@ -246,7 +280,6 @@
             "Als je je linkeroog sluit, kun je nooit over je linkerschouder kijken. (Je neus zit in de weg.)"
         ];
 
-        // Quizvragen (verwerkingsvorm, gedeeltelijk true/false)
         const quizQuestions = [
             { text: "Meisjes knipperen 2x zo vaak als jongens.", answer: true },
             { text: "Je kunt prima niezen met je ogen open.", answer: false },
@@ -260,10 +293,7 @@
         function login() {
             const name = document.getElementById('usernameInput').value.trim();
             if (name === "") { alert("Vul je voornaam in!"); return; }
-            
-            // Opslaan in Firebase
             db.ref('users/' + name).set({ name: name, timestamp: Date.now() });
-            
             currentUser = name;
             document.getElementById('displayName').innerText = name;
             showSection('mainScreen');
@@ -283,6 +313,8 @@
             if (id === 'stopMotionSection') {
                 loadVideos();
                 setupCamera();
+                frames = [];
+                updateFramesUI();
             }
         }
 
@@ -327,73 +359,124 @@
         // ---- STOPMOTION ----
         async function setupCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.getElementById('videoPreview');
-                video.srcObject = stream;
+                if (!cameraStream) {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
+                const video = document.getElementById('cameraPreview');
+                video.srcObject = cameraStream;
             } catch (err) {
-                alert("Kan geen camera starten. Check je camera-instellingen.");
+                alert("Kan geen camera starten. Check je camera-instellingen en geef toegang.");
                 console.error(err);
             }
         }
 
-        function startRecording() {
-            const stream = document.getElementById('videoPreview').srcObject;
-            if (!stream) return;
-            
-            recordedChunks = [];
-            // Gebruik lage bitrate zodat het in de database past (WebM)
-            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 500000 });
-            
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) recordedChunks.push(e.data);
-            };
+        // Maak een foto van de huidige camera-stream
+        function takePhoto() {
+            const video = document.getElementById('cameraPreview');
+            if (!video.srcObject) return;
 
-            mediaRecorder.onstop = uploadVideo;
+            // Teken het videoframe op een canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            mediaRecorder.start();
-            document.getElementById('startBtn').classList.add('hidden');
-            document.getElementById('stopBtn').classList.remove('hidden');
-            document.getElementById('recordStatus').innerText = "Opname bezig... (max 60 sec)";
-            
-            // Automatisch stoppen na 60 seconden
-            setTimeout(() => {
-                if (mediaRecorder.state !== 'inactive') {
-                    stopRecording();
-                }
-            }, 60000);
+            // Zet om naar data URL (JPEG)
+            const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+            frames.push(dataURL);
+            updateFramesUI();
         }
 
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                document.getElementById('startBtn').classList.remove('hidden');
-                document.getElementById('stopBtn').classList.add('hidden');
-                document.getElementById('recordStatus').innerText = "Uploaden naar database...";
+        function updateFramesUI() {
+            document.getElementById('frameCount').innerText = "Aantal foto's: " + frames.length;
+            const grid = document.getElementById('framesGrid');
+            grid.innerHTML = "";
+
+            frames.forEach((frame, index) => {
+                const img = document.createElement('img');
+                img.src = frame;
+                img.title = "Foto " + (index + 1);
+                grid.appendChild(img);
+            });
+
+            grid.scrollTop = grid.scrollHeight; // Scroll naar beneden
+        }
+
+        // Voeg alle foto's samen tot een video en upload naar Firebase
+        async function generateVideo() {
+            if (frames.length < 2) {
+                alert("Maak eerst minimaal 2 foto's!");
+                return;
             }
-        }
 
-        function uploadVideo() {
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
-            const reader = new FileReader();
+            document.getElementById('recordStatus').innerText = "Bezig met filmpje maken...";
             
-            reader.onloadend = () => {
-                const base64data = reader.result;
-                
-                // Opslaan in Firebase RTDB
-                db.ref('stopmotions').push({
-                    user: currentUser,
-                    videoData: base64data,
-                    timestamp: Date.now()
-                }).then(() => {
-                    document.getElementById('recordStatus').innerText = "Video opgeslagen!";
-                    loadVideos();
-                }).catch((error) => {
-                    document.getElementById('recordStatus').innerText = "Fout bij uploaden (bestand te groot voor RTDB)";
-                    console.error(error);
-                });
+            // Stel canvas in op dezelfde grootte als de eerste foto
+            const img = new Image();
+            img.src = frames[0];
+            
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+
+                // Maak een stream van het canvas
+                const stream = canvas.captureStream(30);
+                const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+                const chunks = [];
+
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) chunks.push(e.data);
+                };
+
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64data = reader.result;
+                        
+                        // Opslaan in Firebase RTDB
+                        db.ref('stopmotions').push({
+                            user: currentUser,
+                            videoData: base64data,
+                            timestamp: Date.now()
+                        }).then(() => {
+                            document.getElementById('recordStatus').innerText = "Video opgeslagen!";
+                            loadVideos();
+                            // Reset frames na succesvol uploaden
+                            frames = [];
+                            updateFramesUI();
+                        }).catch((error) => {
+                            document.getElementById('recordStatus').innerText = "Fout bij uploaden (bestand te groot voor RTDB)";
+                            console.error(error);
+                        });
+                    };
+                    reader.readAsDataURL(blob);
+                };
+
+                recorder.start();
+
+                // Loop door alle frames
+                let index = 0;
+                const drawFrame = () => {
+                    if (index < frames.length) {
+                        const frameImg = new Image();
+                        frameImg.src = frames[index];
+                        frameImg.onload = () => {
+                            ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+                            index++;
+                            setTimeout(drawFrame, FRAME_DURATION);
+                        };
+                    } else {
+                        // Klaar met alle frames, stop de recorder
+                        setTimeout(() => recorder.stop(), FRAME_DURATION);
+                    }
+                };
+
+                drawFrame();
             };
-            
-            reader.readAsDataURL(blob);
         }
 
         // Video's tonen
