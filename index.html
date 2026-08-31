@@ -103,7 +103,7 @@
 
         /* Quiz Random Naam UI */
         .name-banner {
-            background: linear-gradient(45deg, #FF6B6B, #FECB6E, #9B59B6); /* Vrolijke gradient */
+            background: linear-gradient(45deg, #FF6B6B, #FECB6E, #9B59B6);
             color: white;
             font-size: 2.2rem;
             padding: 15px;
@@ -111,7 +111,7 @@
             margin-bottom: 20px;
             border: 4px solid white;
             font-weight: bold;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.4); /* Witte schaduw voor leesbaarheid */
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             animation: pop-in 0.5s ease-out;
         }
@@ -123,12 +123,11 @@
         
         .quiz-box { background: #e74c3c; border-radius: 10px; padding: 20px; color: white; }
         
-        /* De stelling zelf wordt een vrolijke sticker! */
         #quizQuestion {
             font-size: 2rem; 
             font-weight: bold; 
-            background: #FEF9E7; /* Licht geel */
-            color: #8E44AD; /* Paars */
+            background: #FEF9E7; 
+            color: #8E44AD; 
             padding: 20px; 
             border-radius: 15px; 
             border: 4px dashed #F39C12;
@@ -321,6 +320,7 @@
         let frames = [];
         const FRAME_DURATION = 500;
 
+        // UITGEBREIDE WEETJES
         const facts = [
             "Je knippert meer dan tienduizend keer per dag met je ogen.",
             "Je kunt nooit met je ogen open niezen.",
@@ -329,16 +329,29 @@
             "Eén oog heeft ongeveer tweehonderd wimperhaartjes.",
             "Meisjes knipperen twee keer zo vaak als jongens.",
             "Vissen slapen met hun ogen open.",
-            "Als je je linkeroog sluit, kun je nooit over je linkerschouder kijken. (Je neus zit in de weg.)"
+            "Als je je linkeroog sluit, kun je nooit over je linkerschouder kijken. (Je neus zit in de weg.)",
+            "Je ogen kunnen wel tien miljoen verschillende kleuren zien.",
+            "Je oogbal is ongeveer 2,5 centimeter groot.",
+            "Je oogballen groeien niet mee met de rest van je lichaam! Ze blijven even groot als toen je geboren werd.",
+            "Je traanvocht is zout, net als zeewater.",
+            "Je ogen werken net als een fototoestel: je pupil is de lens en je netvlies is de film.",
+            "Het beeld dat je ziet staat in je oog ondersteboven, maar je hersenen draaien het weer goed!",
+            "Als je naar heel fel licht kijkt, moet je soms niezen. Dat heet de niesreflex.",
+            "Het duurt minder dan een halve seconde voordat je ogen scherp hebben gesteld op iets nieuws."
         ];
 
+        // UITGEBREIDE QUIZ (Waar/Niet Waar)
         const quizQuestions = [
             { text: "Meisjes knipperen 2x zo vaak als jongens.", answer: true },
             { text: "Je kunt prima niezen met je ogen open.", answer: false },
             { text: "De meeste mensen hebben blauwe ogen.", answer: false },
             { text: "Vissen slapen met hun ogen dicht.", answer: false },
             { text: "Alle baby's zijn kleurenblind.", answer: true },
-            { text: "Als je je linkeroog sluit kun je prima over je linkerschouder kijken.", answer: false }
+            { text: "Als je je linkeroog sluit kun je prima over je linkerschouder kijken.", answer: false },
+            { text: "Je traanvocht is zout, net als zeewater.", answer: true },
+            { text: "Je oogballen groeien mee met de rest van je lichaam.", answer: false },
+            { text: "Het beeld dat je ziet staat in je oog ondersteboven.", answer: true },
+            { text: "Je ogen kunnen maar tien kleuren zien, net als een oude tv.", answer: false }
         ];
 
         function login() {
@@ -415,7 +428,6 @@
             if (currentQuizIndex < quizQuestions.length) {
                 document.getElementById('quizQuestion').innerText = quizQuestions[currentQuizIndex].text;
                 document.getElementById('quizFeedback').innerText = "";
-                // Random naam kiezen per stelling
                 document.getElementById('randomName').innerText = "Nu is " + getRandomUserName() + " aan de beurt!";
             } else {
                 document.getElementById('quizQuestion').innerText = "Quiz klaar!";
