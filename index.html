@@ -178,6 +178,117 @@
         .video-list video { width: 150px; margin: 5px; }
 
         .reset-btn { background: #2c3e50; color: white; position: fixed; bottom: 10px; right: 10px; }
+
+        /* --- CSS van het nieuwe Spel: Bouw het Oog --- */
+        #game-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            #game-container { flex-direction: column; }
+        }
+
+        #info-box {
+            background-color: #2c3e50;
+            color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            flex: 1;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #info-box h2 { margin-top: 0; color: #1abc9c; }
+        #description { font-size: 1.1em; line-height: 1.5; }
+
+        #interactive-area {
+            flex: 1.5;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .target-term {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #e67e22;
+            background-color: #fef5ec;
+            padding: 10px 20px;
+            border: 2px dashed #e67e22;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            width: 90%;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            width: 100%;
+        }
+
+        .option-btn {
+            background-color: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            padding: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            text-align: center;
+            font-family: 'Comic Neue', cursive;
+        }
+
+        .option-btn:hover {
+            background-color: #34495e;
+            color: #fff;
+            border-color: #34495e;
+        }
+
+        .option-btn.correct {
+            background-color: #2ecc71 !important;
+            color: white !important;
+            border-color: #27ae60 !important;
+            cursor: default;
+        }
+
+        .option-btn.wrong {
+            background-color: #e74c3c !important;
+            color: white !important;
+            border-color: #c0392b !important;
+        }
+
+        #score-board {
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        #reset-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #1abc9c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            display: none;
+        }
+        #reset-btn:hover { background-color: #16a085; }
     </style>
 </head>
 <body>
@@ -191,7 +302,32 @@
         <button class="btn btn-green" onclick="login()">Start de les 🚀</button>
     </div>
 
-    <!-- Hoofdscherm -->
+    <!-- NIEUW: Spel: Bouw het Oog -->
+    <div id="gameScreen" class="container hidden">
+        <h1>Bouw het Oog! 👁️</h1>
+        <p>Lees de omschrijving in de blauwe doos. Welk onderdeel van het oog wordt hier gezocht? Klik op het juiste antwoord om het oog op te bouwen!</p>
+
+        <div id="game-container">
+            <!-- Links: De omschrijvingenbak -->
+            <div id="info-box">
+                <h2>Omschrijving:</h2>
+                <div id="description">Laden van het spel...</div>
+            </div>
+
+            <!-- Rechts: Het interactieve quiz gedeelte -->
+            <div id="interactive-area">
+                <div class="target-term" id="target-title">Zoek het juiste onderdeel</div>
+                <div class="options-grid" id="options-container"></div>
+                <div id="score-board">Voortgang: <span id="progress">0</span> / 8</div>
+                
+                <!-- Knop om door te gaan -->
+                <button class="btn btn-green" onclick="showSection('mainScreen')" style="margin-top: 15px;">Klaar met spelen! Verder met de les 🚀</button>
+                <button id="reset-btn" onclick="startGame()">Opnieuw Spelen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hoofdscherm (De rest van de les) -->
     <div id="mainScreen" class="container hidden">
         <h1>Bartiméus, de blinde die weer kan zien 👀</h1>
         <p>Ingelogd als: <span id="displayName"></span></p>
@@ -360,7 +496,10 @@
             db.ref('users/' + name).set({ name: name, timestamp: Date.now() });
             currentUser = name;
             document.getElementById('displayName').innerText = name;
-            showSection('mainScreen');
+            
+            // Ga nu eerst naar het spel, daarna naar de rest
+            showSection('gameScreen');
+            startGame();
         }
 
         function showSection(id) {
@@ -450,6 +589,78 @@
             }
             currentQuizIndex++;
             setTimeout(updateQuiz, 1000);
+        }
+
+        // ---- NIEUW: BOUW HET OOG SPEL ----
+        const eyeStructures = [
+            { name: "De Lens", desc: "Dit is een doorzichtige, buigzame bol. Hij kan van vorm veranderen om het licht precies scherp te stellen op de achterkant van je oog." },
+            { name: "De Pupil", desc: "Dit is het zwarte poortje (de opening) in het midden van je oog. Hij wordt groter in het donker en kleiner als er veel licht is." },
+            { name: "Het Netvlies", desc: "Dit zit helemaal achterin je oog en werkt als een bioscoopscherm. Het vangt het licht op met speciale cellen en maakt er signalen van voor je hersenen." },
+            { name: "Het Hoornvlies", desc: "Dit is het doorzichtige, beschermende venstertje aan de buitenkant van je oog waar het licht als eerste doorheen reist." },
+            { name: "De Oogzenuw", desc: "Deze grote kabel bevat meer dan 1 miljoen vezels en stuurt alle beelden van je oog razendsnel door naar je hersenen." },
+            { name: "Het Glasvocht", desc: "Dit is een heldere, gelei-achtige vloeistof die de binnenkant van je oog vult. Het zorgt ervoor dat je oog mooi rond blijft." },
+            { name: "De Iris (Regenbooghuid)", desc: "Dit is het gekleurde deel van je oog (bijvoorbeeld blauw, groen of bruin). Het is een spier die de grootte van de pupil regelt." },
+            { name: "De Oogspieren", desc: "Deze sterke strengen zitten aan de buitenkant van de oogbol vast. Ze zorgen ervoor dat je je oog alle kanten op kunt bewegen." }
+        ];
+
+        let currentPool = [];
+        let currentTarget = null;
+        let gameScore = 0;
+
+        function startGame() {
+            gameScore = 0;
+            document.getElementById('progress').innerText = gameScore;
+            document.getElementById('reset-btn').style.display = 'none';
+            currentPool = [...eyeStructures];
+            generateRound();
+            setupOptionsGrid();
+        }
+
+        function setupOptionsGrid() {
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            eyeStructures.forEach(structure => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = structure.name;
+                btn.id = 'btn-' + structure.name.replace(/\s+/g, '-');
+                btn.onclick = () => checkAnswer(structure.name, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function generateRound() {
+            if (currentPool.length === 0) {
+                document.getElementById('description').innerText = "Hoera! Je hebt het hele oog succesvol opgebouwd! 🎉";
+                document.getElementById('target-title').innerText = "Goed gedaan!";
+                document.getElementById('reset-btn').style.display = 'block';
+                return;
+            }
+
+            const randomIndex = Math.floor(Math.random() * currentPool.length);
+            currentTarget = currentPool[randomIndex];
+
+            document.getElementById('description').innerText = currentTarget.desc;
+            document.getElementById('target-title').innerText = "Welk onderdeel is dit?";
+        }
+
+        function checkAnswer(chosenName, buttonElement) {
+            if (buttonElement.classList.contains('correct')) return;
+
+            if (chosenName === currentTarget.name) {
+                buttonElement.classList.add('correct');
+                currentPool = currentPool.filter(item => item.name !== currentTarget.name);
+                gameScore++;
+                document.getElementById('progress').innerText = gameScore;
+                
+                setTimeout(generateRound, 600);
+            } else {
+                buttonElement.classList.add('wrong');
+                setTimeout(() => {
+                    buttonElement.classList.remove('wrong');
+                }, 500);
+            }
         }
 
         // ---- STOPMOTION (Ongewijzigd) ----
