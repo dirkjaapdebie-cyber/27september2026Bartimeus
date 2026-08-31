@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bartiméus Les</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+
+    <style>
+        body {
+            font-family: 'Comic Neue', cursive;
+            background: linear-gradient(135deg, #fce38a, #f38181, #eaafc8);
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            color: #333;
+        }
+
+        /* Algemene container */
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hidden { display: none; }
+        .btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: 'Fredoka One', cursive;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 5px 0 #c0392b;
+            transition: 0.1s;
+        }
+        .btn:active { transform: translateY(5px); box-shadow: none; }
+        .btn-green { background: #2ecc71; box-shadow: 0 5px 0 #27ae60; }
+        .btn-purple { background: #9b59b6; box-shadow: 0 5px 0 #8e44ad; }
+        
+        /* Login scherm */
+        #loginScreen input {
+            font-size: 1.5rem;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
+        }
+
+        /* Home scherm */
+        .home-box {
+            background: #fef9e7;
+            border: 5px solid #f39c12;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .home-box img {
+            width: 100%;
+            max-width: 300px;
+            border-radius: 15px;
+            border: 4px solid white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Powerpoint Weetjes */
+        .slideshow-container {
+            position: relative;
+            background: #3498db;
+            border-radius: 15px;
+            padding: 40px;
+            color: white;
+            font-size: 2rem;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .slide-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            font-size: 2rem;
+            padding: 10px;
+            cursor: pointer;
+        }
+        .prev { left: 10px; } .next { right: 10px; }
+
+        /* Quiz verwerkingsvorm */
+        .quiz-box { background: #e74c3c; border-radius: 10px; padding: 20px; color: white; }
+        .quiz-options button {
+            background: white; color: #333; border: none; padding: 10px 20px; font-size: 1.2rem; margin: 10px; cursor: pointer;
+            border-radius: 5px;
+        }
+
+        /* Youtube */
+        iframe { width: 100%; max-width: 560px; height: 315px; border: none; border-radius: 10px; margin-top: 20px; }
+
+        /* Stopmotion */
+        #videoPreview { width: 100%; max-width: 500px; border-radius: 10px; background: black; }
+        .video-list { max-height: 200px; overflow-y: auto; background: #f0f0f0; padding: 10px; border-radius: 10px; }
+        .video-list video { width: 150px; margin: 5px; }
+
+        /* Resetknop */
+        .reset-btn { background: #2c3e50; color: white; position: fixed; bottom: 10px; right: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- Loginscherm -->
+    <div id="loginScreen" class="container">
+        <h1>👋 Hallo!</h1>
+        <p>Wat is je voornaam?</p>
+        <input type="text" id="usernameInput" placeholder="Typ hier je naam">
+        <br>
+        <button class="btn btn-green" onclick="login()">Start de les 🚀</button>
+    </div>
+
+    <!-- Hoofdscherm -->
+    <div id="mainScreen" class="container hidden">
+        <h1>Bartiméus, de blinde die weer kan zien 👀</h1>
+        <p>Ingelogd als: <span id="displayName"></span></p>
+
+        <!-- Home met afbeelding en tekst -->
+        <div class="home-box">
+            <p style="font-size: 1.3rem; font-style: italic;">
+                "De mensen zeiden: 'Houd toch je mond!'<br>
+                Maar hij begon nog veel harder te roepen:<br>
+                'Zoon van David! Heb medelijden met mij!'"
+            </p>
+            <img src="bartimeus1.png" alt="Bartimeüs">
+        </div>
+
+        <div class="nav-buttons">
+            <button class="btn btn-purple" onclick="showSection('factsSection')">🧠 De Weetjes</button>
+            <button class="btn" onclick="showSection('storySection')">📖 Het Verhaal</button>
+            <button class="btn btn-green" onclick="showSection('stopMotionSection')">🎬 Stopmotion Maken</button>
+        </div>
+    </div>
+
+    <!-- Weetjes (PowerPoint + Quiz) -->
+    <div id="factsSection" class="container hidden">
+        <h2>🧠 Weetjes over je ogen (PowerPoint)</h2>
+        <div class="slideshow-container">
+            <button class="slide-btn prev" onclick="changeSlide(-1)">❮</button>
+            <div id="slideText">Slide 1</div>
+            <button class="slide-btn next" onclick="changeSlide(1)">❯</button>
+        </div>
+        
+        <h3>De Verwerkingsvorm: Waar of Niet Waar? 🤔</h3>
+        <div id="quizSection">
+            <p id="quizQuestion" style="font-size: 1.5rem; font-weight: bold; background: white; padding: 10px; border-radius: 10px;"></p>
+            <button class="btn btn-green" onclick="quizAnswer(true)">WAAR</button>
+            <button class="btn" onclick="quizAnswer(false)">NIET WAAR</button>
+            <p id="quizFeedback"></p>
+        </div>
+        <br>
+        <button class="btn" onclick="showSection('mainScreen')">Terug</button>
+    </div>
+
+    <!-- Bijbelverhaal -->
+    <div id="storySection" class="container hidden">
+        <h2>📖 Het Bijbelverhaal: Marcus 10:46-52</h2>
+        <div style="text-align: left; background: #fff9c4; padding: 20px; border-radius: 10px; font-size: 1.2rem;">
+            <p>Jezus en de leerlingen kwamen in Jericho. Ze liepen door de stad, en een grote groep mensen liep mee. Toen ze de stad weer uit gingen, zat er een blinde bedelaar langs de kant van de weg. Hij heette Bartimeüs. Toen hij hoorde dat Jezus uit Nazaret voorbijkwam, begon hij te roepen: ‘Jezus! Zoon van David! Heb medelijden met mij!’</p>
+            <p>De mensen zeiden: ‘Houd toch je mond!’ Maar hij begon nog veel harder te roepen: ‘Zoon van David! Heb medelijden met mij!’</p>
+            <p>Jezus bleef staan en zei: ‘Roep die man hier.’ De mensen riepen de man. Ze zeiden: ‘Rustig maar. Sta op, Jezus roept je.’ Meteen liet de man zijn jas op de grond vallen. Hij sprong op en ging naar Jezus. Jezus vroeg aan hem: ‘Wat kan ik voor je doen?’ De blinde man antwoordde: ‘Meester, ik wil weer kunnen zien.’ Jezus zei: ‘Dat is goed. Je bent beter geworden dankzij je geloof.’ Op datzelfde moment kon de man weer zien. Hij ging met Jezus mee, op weg naar Jeruzalem.</p>
+        </div>
+        
+        <!-- YouTube filmpje -->
+        <h3>Bekijk hier het filmpje:</h3>
+        <iframe src="https://www.youtube.com/embed/2KtgNiE6pk0" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        
+        <br><br>
+        <button class="btn" onclick="showSection('mainScreen')">Terug</button>
+    </div>
+
+    <!-- Stopmotion Sectie -->
+    <div id="stopMotionSection" class="container hidden">
+        <h2>🎬 Stopmotion Maken</h2>
+        <p><strong>Opdracht:</strong> Laat zien dat Bartimeüs NIET luistert als de mensen tegen hem zeggen dat hij zijn mond moet houden! Neem een filmpje op van maximaal 1 minuut.</p>
+        
+        <video id="videoPreview" autoplay muted></video>
+        <br><br>
+        <button id="startBtn" class="btn btn-green" onclick="startRecording()">Start Opname 🎥</button>
+        <button id="stopBtn" class="btn hidden" onclick="stopRecording()">Stop en Upload ⏹️</button>
+        <p id="recordStatus"></p>
+
+        <h3>Eerder gemaakte filmpjes van de groep:</h3>
+        <div id="videoList" class="video-list">Laden...</div>
+
+        <br><br>
+        <button class="btn" onclick="showSection('mainScreen')">Terug</button>
+    </div>
+
+    <!-- Reset knop -->
+    <button class="btn reset-btn" onclick="resetDatabase()">⚠️ Reset Alles</button>
+
+    <script>
+        // Firebase configuratie
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxFVlEYMIewTN6bdSOTL3H8el1V3jm-DM",
+            authDomain: "schatgraversemoties.firebaseapp.com",
+            databaseURL: "https://schatgraversemoties-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "schatgraversemoties",
+            storageBucket: "schatgraversemoties.firebasestorage.app",
+            messagingSenderId: "180003857797",
+            appId: "1:180003857797:web:4890f9a02e1ac8c1f150ec"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentUser = "";
+        let currentSlide = 0;
+        let currentQuizIndex = 0;
+        let score = 0;
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        const facts = [
+            "Je knippert meer dan tienduizend keer per dag met je ogen.",
+            "Je kunt nooit met je ogen open niezen.",
+            "Alle baby's zijn kleurenblind.",
+            "De meeste mensen hebben bruine ogen.",
+            "Eén oog heeft ongeveer tweehonderd wimperhaartjes.",
+            "Meisjes knipperen twee keer zo vaak als jongens.",
+            "Vissen slapen met hun ogen open.",
+            "Als je je linkeroog sluit, kun je nooit over je linkerschouder kijken. (Je neus zit in de weg.)"
+        ];
+
+        // Quizvragen (verwerkingsvorm, gedeeltelijk true/false)
+        const quizQuestions = [
+            { text: "Meisjes knipperen 2x zo vaak als jongens.", answer: true },
+            { text: "Je kunt prima niezen met je ogen open.", answer: false },
+            { text: "De meeste mensen hebben blauwe ogen.", answer: false },
+            { text: "Vissen slapen met hun ogen dicht.", answer: false },
+            { text: "Alle baby's zijn kleurenblind.", answer: true },
+            { text: "Als je je linkeroog sluit kun je prima over je linkerschouder kijken.", answer: false }
+        ];
+
+        // Login functie
+        function login() {
+            const name = document.getElementById('usernameInput').value.trim();
+            if (name === "") { alert("Vul je voornaam in!"); return; }
+            
+            // Opslaan in Firebase
+            db.ref('users/' + name).set({ name: name, timestamp: Date.now() });
+            
+            currentUser = name;
+            document.getElementById('displayName').innerText = name;
+            showSection('mainScreen');
+        }
+
+        // Secties tonen
+        function showSection(id) {
+            document.querySelectorAll('.container').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            
+            if (id === 'factsSection') {
+                currentSlide = 0;
+                currentQuizIndex = 0;
+                updateSlide();
+                updateQuiz();
+            }
+            if (id === 'stopMotionSection') {
+                loadVideos();
+                setupCamera();
+            }
+        }
+
+        // ---- WEETJES ----
+        function changeSlide(dir) {
+            currentSlide += dir;
+            if (currentSlide < 0) currentSlide = facts.length - 1;
+            if (currentSlide >= facts.length) currentSlide = 0;
+            updateSlide();
+        }
+
+        function updateSlide() {
+            document.getElementById('slideText').innerText = facts[currentSlide];
+        }
+
+        function updateQuiz() {
+            if (currentQuizIndex < quizQuestions.length) {
+                document.getElementById('quizQuestion').innerText = quizQuestions[currentQuizIndex].text;
+                document.getElementById('quizFeedback').innerText = "";
+            } else {
+                document.getElementById('quizQuestion').innerText = "Quiz klaar!";
+                document.getElementById('quizFeedback').innerText = "Je score: " + score + " / " + quizQuestions.length;
+                document.getElementById('quizFeedback').style.color = "white";
+            }
+        }
+
+        function quizAnswer(isTrue) {
+            if (currentQuizIndex >= quizQuestions.length) return;
+            const correct = quizQuestions[currentQuizIndex].answer === isTrue;
+            if (correct) {
+                score++;
+                document.getElementById('quizFeedback').innerText = "✅ Goed!";
+                document.getElementById('quizFeedback').style.color = "lightgreen";
+            } else {
+                document.getElementById('quizFeedback').innerText = "❌ Helaas, dat klopt niet.";
+                document.getElementById('quizFeedback').style.color = "red";
+            }
+            currentQuizIndex++;
+            setTimeout(updateQuiz, 1000);
+        }
+
+        // ---- STOPMOTION ----
+        async function setupCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('videoPreview');
+                video.srcObject = stream;
+            } catch (err) {
+                alert("Kan geen camera starten. Check je camera-instellingen.");
+                console.error(err);
+            }
+        }
+
+        function startRecording() {
+            const stream = document.getElementById('videoPreview').srcObject;
+            if (!stream) return;
+            
+            recordedChunks = [];
+            // Gebruik lage bitrate zodat het in de database past (WebM)
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 500000 });
+            
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = uploadVideo;
+
+            mediaRecorder.start();
+            document.getElementById('startBtn').classList.add('hidden');
+            document.getElementById('stopBtn').classList.remove('hidden');
+            document.getElementById('recordStatus').innerText = "Opname bezig... (max 60 sec)";
+            
+            // Automatisch stoppen na 60 seconden
+            setTimeout(() => {
+                if (mediaRecorder.state !== 'inactive') {
+                    stopRecording();
+                }
+            }, 60000);
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                document.getElementById('startBtn').classList.remove('hidden');
+                document.getElementById('stopBtn').classList.add('hidden');
+                document.getElementById('recordStatus').innerText = "Uploaden naar database...";
+            }
+        }
+
+        function uploadVideo() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const reader = new FileReader();
+            
+            reader.onloadend = () => {
+                const base64data = reader.result;
+                
+                // Opslaan in Firebase RTDB
+                db.ref('stopmotions').push({
+                    user: currentUser,
+                    videoData: base64data,
+                    timestamp: Date.now()
+                }).then(() => {
+                    document.getElementById('recordStatus').innerText = "Video opgeslagen!";
+                    loadVideos();
+                }).catch((error) => {
+                    document.getElementById('recordStatus').innerText = "Fout bij uploaden (bestand te groot voor RTDB)";
+                    console.error(error);
+                });
+            };
+            
+            reader.readAsDataURL(blob);
+        }
+
+        // Video's tonen
+        function loadVideos() {
+            db.ref('stopmotions').on('value', (snapshot) => {
+                const list = document.getElementById('videoList');
+                list.innerHTML = "";
+                if (!snapshot.exists()) { list.innerText = "Nog geen filmpjes."; return; }
+
+                snapshot.forEach(child => {
+                    const data = child.val();
+                    const videoElement = document.createElement('video');
+                    videoElement.src = data.videoData;
+                    videoElement.controls = true;
+                    videoElement.title = `Door: ${data.user}`;
+                    
+                    const userName = document.createElement('p');
+                    userName.innerText = "🎬 " + data.user;
+                    userName.style.fontSize = "0.8rem";
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.appendChild(videoElement);
+                    wrapper.appendChild(userName);
+                    list.appendChild(wrapper);
+                });
+            });
+        }
+
+        // Reset alles
+        function resetDatabase() {
+            if (confirm("Weet je zeker dat je ALLE namen en filmpjes wilt verwijderen?")) {
+                db.ref().remove().then(() => {
+                    alert("Alles is gewist! De pagina wordt herladen.");
+                    location.reload();
+                });
+            }
+        }
+    </script>
+</body>
+</html>
