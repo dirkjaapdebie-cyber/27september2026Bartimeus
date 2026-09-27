@@ -8,9 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
-            --primary: #2563eb;
-            --success: #16a34a;
-            --warning: #ca8a04;
             --bg: #f8fafc;
             --text: #1e293b;
         }
@@ -22,7 +19,6 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Touch-friendly button feedback */
         .btn-touch {
             touch-action: manipulation;
             transition: transform 0.1s ease, opacity 0.2s ease;
@@ -31,7 +27,6 @@
             transform: scale(0.96);
         }
 
-        /* Custom frame reel scrollbar */
         .frames-reel::-webkit-scrollbar {
             height: 8px;
         }
@@ -47,7 +42,7 @@
 </head>
 <body class="p-3 sm:p-5 max-w-4xl mx-auto min-h-screen flex flex-col justify-between">
 
-    <!-- Custom Modal Toast (Vervanger voor alert) -->
+    <!-- Custom Modal Toast -->
     <div id="toastModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform transition-all">
             <div id="toastIcon" class="text-4xl mb-3">✨</div>
@@ -59,6 +54,23 @@
         </div>
     </div>
 
+    <!-- Confirmation Modal voor Database Reset -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform transition-all">
+            <div class="text-4xl mb-3">⚠️</div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Database Leegmaken?</h3>
+            <p class="text-slate-600 mb-5 text-sm">Weet je zeker dat je <strong>alle gemaakte filmpjes uit de database</strong> wilt verwijderen? Dit kan niet ongedaan worden gemaakt.</p>
+            <div class="flex gap-2">
+                <button onclick="closeConfirmModal()" class="btn-touch flex-1 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-300">
+                    Annuleren
+                </button>
+                <button onclick="executeClearDatabase()" class="btn-touch flex-1 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 shadow-md">
+                    Ja, Wis Alles 🔥
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div>
         <!-- Clubleider Navigatiebalk -->
         <header id="leaderBar" class="bg-slate-900 text-white p-3 rounded-xl mb-4 flex flex-wrap items-center justify-between gap-3 shadow-md">
@@ -66,15 +78,20 @@
                 <span class="text-xl">👑</span>
                 <strong class="text-sm sm:text-base">Clubleider Bediening</strong>
             </div>
-            <div class="flex items-center gap-2">
-                <label for="sectionSelect" class="text-xs sm:text-sm text-slate-300">Spring naar:</label>
-                <select id="sectionSelect" onchange="showSection(this.value)" class="bg-slate-800 text-white text-xs sm:text-sm py-1.5 px-3 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="loginScreen">🔑 Inloggen</option>
-                    <option value="gameScreen">👁️ Spel: Bouw het Oog</option>
-                    <option value="factsSection">🧠 Weetjes & Quiz</option>
-                    <option value="storySection">📖 Het Verhaal</option>
-                    <option value="stopMotionSection">🎬 Stopmotion Studio & Livefeed</option>
-                </select>
+            <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <label for="sectionSelect" class="text-xs sm:text-sm text-slate-300">Spring naar:</label>
+                    <select id="sectionSelect" onchange="showSection(this.value)" class="bg-slate-800 text-white text-xs sm:text-sm py-1.5 px-3 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="loginScreen">🔑 Inloggen</option>
+                        <option value="gameScreen">👁️ Spel: Bouw het Oog</option>
+                        <option value="factsSection">🧠 Weetjes & Quiz</option>
+                        <option value="storySection">📖 Het Verhaal</option>
+                        <option value="stopMotionSection">🎬 Stopmotion Studio & Livefeed</option>
+                    </select>
+                </div>
+                <button onclick="openConfirmModal()" class="btn-touch bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg border border-rose-500 flex items-center gap-1 shadow-sm">
+                    🧹 Wis Database Filmpjes
+                </button>
             </div>
         </header>
 
@@ -115,9 +132,7 @@
 
                 <div id="interactive-area">
                     <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Kies het juiste onderdeel:</div>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5" id="options-container">
-                        <!-- Dynamic options buttons -->
-                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5" id="options-container"></div>
                     
                     <div class="flex justify-between items-center pt-2 border-t border-slate-100">
                         <button id="reset-btn" class="btn-touch px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-sm rounded-lg" onclick="startGame()">
@@ -137,7 +152,6 @@
                 </h2>
                 <p class="text-slate-500 text-sm mb-4">Gebruik de pijlknoppen om de weetjes te bekijken.</p>
 
-                <!-- Slideshow -->
                 <div class="bg-slate-50 border border-slate-200 p-6 rounded-xl text-center my-3 min-h-[140px] flex items-center justify-between gap-2 shadow-inner">
                     <button class="btn-touch bg-blue-600 text-white w-10 h-10 rounded-full font-bold text-lg flex items-center justify-center shrink-0 shadow-md hover:bg-blue-700" onclick="changeSlide(-1)">❮</button>
                     <div id="slideText" class="text-slate-800 text-base sm:text-lg font-medium px-2">Slide 1</div>
@@ -148,24 +162,18 @@
                     Weetje <span id="slideNum">1</span> van <span id="slideTotal">5</span>
                 </div>
 
-                <!-- Quiz Toggle Button -->
                 <div class="text-center mb-6">
                     <button class="btn-touch px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md text-base" onclick="toggleQuiz()">
                         🎲 Start de Waar/Niet Waar Quiz!
                     </button>
                 </div>
 
-                <!-- Quiz Block -->
                 <div id="quizSection" class="hidden bg-amber-50 border-2 border-amber-200 p-5 rounded-xl mb-6">
                     <h3 class="font-bold text-amber-900 text-lg mb-2">❓ Waar of Niet Waar?</h3>
                     <p id="quizQuestion" class="text-slate-800 font-medium text-base sm:text-lg mb-4"></p>
                     <div class="flex gap-3">
-                        <button class="btn-touch flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm text-base" onclick="answerQuiz(true)">
-                            Waar 👍
-                        </button>
-                        <button class="btn-touch flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm text-base" onclick="answerQuiz(false)">
-                            Niet Waar 👎
-                        </button>
+                        <button class="btn-touch flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm text-base" onclick="answerQuiz(true)">Waar 👍</button>
+                        <button class="btn-touch flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm text-base" onclick="answerQuiz(false)">Niet Waar 👎</button>
                     </div>
                     <p id="quizFeedback" class="mt-3 font-bold text-base text-center"></p>
                 </div>
@@ -190,24 +198,13 @@
                     </div>
 
                     <p class="p-1">Jezus en de leerlingen kwamen in Jericho. Ze liepen door de stad, en een grote groep mensen liep mee. Toen ze de stad weer uit gingen, zat er een blinde bedelaar langs de kant van de weg. Hij heette Bartimeüs.</p>
-
                     <p class="p-1">Toen hij hoorde dat Jezus uit Nazaret voorbijkwam, begon hij te roepen: <em>‘Jezus! Zoon van David! Heb medelijden met mij!’</em></p>
-
                     <p class="p-1">De mensen zeiden: ‘Houd toch je mond!’ Maar hij begon nog veel harder te roepen: <em>‘Zoon van David! Heb medelijden met mij!’</em></p>
-
                     <p class="p-1">Jezus bleef staan en zei: ‘Roep die man hier.’ De mensen riepen de man. Ze zeiden: ‘Rustig maar. Sta op, Jezus roept je.’ Meteen liet de man zijn jas op de grond vallen. Hij sprong op en ging naar Jezus.</p>
-
                     <p class="p-1">Jezus vroeg aan hem: ‘Wat kan ik voor je doen?’ De blinde man antwoordde: <em>‘Meester, ik wil weer kunnen zien.’</em> Jezus zei: ‘Dat is goed. Je bent beter geworden dankzij je geloof.’ Op datzelfde moment kon de man weer zien. Hij ging met Jezus mee, op weg naar Jeruzalem.</p>
 
-                    <!-- YouTube Embed -->
                     <div class="relative w-full pb-[56.25%] h-0 overflow-hidden rounded-xl shadow-lg mt-6 bg-black">
-                        <iframe 
-                            class="absolute top-0 left-0 w-full h-full border-0"
-                            src="https://www.youtube.com/embed/2KtgNiE6pk0" 
-                            title="Jezus geneest blinde Bartimeüs" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen>
-                        </iframe>
+                        <iframe class="absolute top-0 left-0 w-full h-full border-0" src="https://www.youtube.com/embed/2KtgNiE6pk0" title="Jezus geneest blinde Bartimeüs" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                     </div>
                 </div>
 
@@ -246,8 +243,8 @@
                     <button class="btn-touch px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl flex items-center gap-1.5 shadow-md" onclick="captureFrame()">
                         📸 Maak Foto
                     </button>
-                    <button id="renderBtn" class="btn-touch px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl flex items-center gap-1.5 shadow-md" onclick="renderAndPublishVideo()">
-                        🎥 Genereer & Deel Film
+                    <button id="renderBtn" class="btn-touch px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl flex items-center gap-1.5 shadow-md" onclick="publishStopmotionMovie()">
+                        🎥 Plak Foto's & Deel Film
                     </button>
                 </div>
 
@@ -255,10 +252,10 @@
                 <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 my-4">
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                            Opgenomen Frames (<span id="frameCount">0</span>)
+                            Gemaakte Foto's (<span id="frameCount">0</span>)
                         </span>
                         <button class="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 rounded hover:bg-rose-50" onclick="clearFrames()">
-                            🗑️ Wis alle frames
+                            🗑️ Wis foto's
                         </button>
                     </div>
                     <div id="framesReel" class="frames-reel flex gap-2 overflow-x-auto py-1 min-h-[85px] items-center">
@@ -269,16 +266,21 @@
                 <hr class="my-6 border-slate-200">
 
                 <!-- Realtime Livefeed Header -->
-                <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <div>
                         <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
                             <span>📡</span> Realtime Livefeed Filmpjes
                         </h3>
-                        <p class="text-xs text-slate-500">Iedereen die een filmpje maakt ziet hem hier direct tussen staan!</p>
+                        <p class="text-xs text-slate-500">Iedereen kan elkaars filmpjes hier direct afspelen!</p>
                     </div>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        ● Live verbonden
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ● Live verbonden
+                        </span>
+                        <button onclick="openConfirmModal()" class="btn-touch text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold px-2.5 py-1 rounded-lg border border-rose-200">
+                            🧹 Wis Database
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Livefeed Grid -->
@@ -295,7 +297,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         /* --- GLOBAL APP CONFIG & FIREBASE INIT --- */
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'oog-app-default';
@@ -316,8 +318,9 @@
 
         let currentUser = null;
         let currentUsername = "Anonieme Maker";
+        const activePlayers = {}; // Bewaart actieve timers voor afspelen in feed
 
-        /* --- UI TOAST HELPER (Geen alert/confirm) --- */
+        /* --- UI MODALS --- */
         window.showToast = function(title, message, icon = '✨') {
             document.getElementById('toastTitle').innerText = title;
             document.getElementById('toastMessage').innerText = message;
@@ -329,7 +332,54 @@
             document.getElementById('toastModal').classList.add('hidden');
         };
 
-        /* --- FIREBASE AUTHENTICATION & LIVEFEED LISTENER --- */
+        window.openConfirmModal = function() {
+            document.getElementById('confirmModal').classList.remove('hidden');
+        };
+
+        window.closeConfirmModal = function() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        };
+
+        /* --- DATABASE WISSEN (NA DE LES) --- */
+        window.executeClearDatabase = async function() {
+            closeConfirmModal();
+            try {
+                const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos');
+                const snapshot = await getDocs(videosCol);
+                
+                if (snapshot.empty) {
+                    showToast("Database is leeg", "Er staan al geen filmpjes in de database.", "ℹ️");
+                    return;
+                }
+
+                // Stop actieve spelers
+                Object.keys(activePlayers).forEach(id => clearInterval(activePlayers[id].interval));
+
+                const deletePromises = [];
+                snapshot.forEach((docSnapshot) => {
+                    deletePromises.push(deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos', docSnapshot.id)));
+                });
+
+                await Promise.all(deletePromises);
+                showToast("Database Gewist! 🧹", "Alle filmpjes zijn succesvol uit de database verwijderd.", "✅");
+            } catch (err) {
+                console.error("Fout bij leegmaken database:", err);
+                showToast("Fout bij leegmaken", "Kon de filmpjes niet verwijderen uit de database.", "❌");
+            }
+        };
+
+        window.deleteSingleVideo = async function(docId) {
+            try {
+                if (activePlayers[docId]) clearInterval(activePlayers[docId].interval);
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos', docId));
+                showToast("Verwijderd", "Filmpje is succesvol verwijderd.", "🗑️");
+            } catch (err) {
+                console.error("Fout bij verwijderen filmpje:", err);
+                showToast("Fout", "Kon het filmpje niet verwijderen.", "❌");
+            }
+        };
+
+        /* --- AUTH & LIVEFEED LISTENER --- */
         async function initAuthAndLivefeed() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -345,7 +395,6 @@
             }
         }
 
-        // Strict Rule 1 & Rule 2: Fetch collection on /artifacts/{appId}/public/data/stopmotion_videos & sort in JS memory
         function listenToLivefeed() {
             if (!currentUser) return;
 
@@ -357,7 +406,7 @@
                     videos.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Client-side sorteren op nieuwste datum
+                // Nieuwste filmpjes bovenaan
                 videos.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                 renderVideoFeed(videos);
             }, (error) => {
@@ -365,6 +414,7 @@
             });
         }
 
+        /* --- LIVEFEED STOPMOTION SPELER RENDEREN --- */
         function renderVideoFeed(videos) {
             const feedContainer = document.getElementById('videoFeed');
             
@@ -378,6 +428,7 @@
             }
 
             feedContainer.innerHTML = '';
+
             videos.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col justify-between';
@@ -386,30 +437,115 @@
                     ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
                     : 'Zojuist';
 
+                const frameCount = item.frames ? item.frames.length : 0;
+                const firstFrame = frameCount > 0 ? item.frames[0] : '';
+
                 card.innerHTML = `
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <span class="font-bold text-slate-800 text-sm truncate">👤 ${escapeHtml(item.username || 'Anoniem')}</span>
-                            <span class="text-xs text-slate-400">${timeStr}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-400">${timeStr}</span>
+                                <button onclick="deleteSingleVideo('${item.id}')" title="Verwijder" class="text-rose-500 hover:text-rose-700 font-bold text-xs p-1">🗑️</button>
+                            </div>
                         </div>
-                        <video src="${item.videoData}" controls playsinline class="w-full rounded-lg bg-black aspect-video object-contain"></video>
+
+                        <!-- Interactive Frame Player Screen -->
+                        <div class="relative bg-black rounded-lg aspect-video flex items-center justify-center overflow-hidden shadow-inner">
+                            <img id="player-img-${item.id}" src="${firstFrame}" class="w-full h-full object-contain">
+                            <div class="absolute bottom-2 right-2 bg-black/70 text-white text-[11px] font-mono px-2 py-0.5 rounded-md backdrop-blur-sm">
+                                Frame <span id="player-frame-num-${item.id}">1</span> / ${frameCount}
+                            </div>
+                        </div>
                     </div>
-                    <a href="${item.videoData}" download="stopmotion_${item.username || 'film'}.webm" class="btn-touch mt-3 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg text-center flex items-center justify-center gap-1 shadow-sm">
-                        💾 Download Filmpje
-                    </a>
+
+                    <!-- Player Controls -->
+                    <div class="mt-3 flex items-center justify-between gap-2">
+                        <button id="play-btn-${item.id}" onclick="togglePlay('${item.id}')" class="btn-touch px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1">
+                            ▶️ Speel Af
+                        </button>
+                        <div class="text-xs text-slate-500 flex items-center gap-1">
+                            <span>Snelheid:</span>
+                            <select onchange="changeSpeed('${item.id}', this.value)" class="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-700 font-medium">
+                                <option value="2">Traag (2 fps)</option>
+                                <option value="3" selected>Normaal (3 fps)</option>
+                                <option value="5">Snel (5 fps)</option>
+                            </select>
+                        </div>
+                    </div>
                 `;
+
                 feedContainer.appendChild(card);
+
+                // Sla frame-data op voor de afspeel-functie
+                activePlayers[item.id] = {
+                    frames: item.frames || [],
+                    fps: 3,
+                    frameIdx: 0,
+                    interval: null,
+                    playing: false
+                };
+
+                // Start automatisch afspelen van het filmpje!
+                setTimeout(() => startPlayer(item.id), 200);
             });
         }
+
+        /* --- STOPMOTION AFSPEEL LOGICA --- */
+        window.startPlayer = function(id) {
+            const player = activePlayers[id];
+            if (!player || !player.frames || player.frames.length === 0) return;
+
+            if (player.interval) clearInterval(player.interval);
+
+            const imgEl = document.getElementById(`player-img-${id}`);
+            const numEl = document.getElementById(`player-frame-num-${id}`);
+            const btnEl = document.getElementById(`play-btn-${id}`);
+
+            player.playing = true;
+            if (btnEl) btnEl.innerHTML = '⏸️ Pauzeer';
+
+            player.interval = setInterval(() => {
+                player.frameIdx = (player.frameIdx + 1) % player.frames.length;
+                if (imgEl) imgEl.src = player.frames[player.frameIdx];
+                if (numEl) numEl.innerText = player.frameIdx + 1;
+            }, 1000 / player.fps);
+        };
+
+        window.stopPlayer = function(id) {
+            const player = activePlayers[id];
+            if (!player) return;
+            if (player.interval) clearInterval(player.interval);
+            player.playing = false;
+            const btnEl = document.getElementById(`play-btn-${id}`);
+            if (btnEl) btnEl.innerHTML = '▶️ Speel Af';
+        };
+
+        window.togglePlay = function(id) {
+            const player = activePlayers[id];
+            if (!player) return;
+            if (player.playing) {
+                stopPlayer(id);
+            } else {
+                startPlayer(id);
+            }
+        };
+
+        window.changeSpeed = function(id, newFps) {
+            const player = activePlayers[id];
+            if (!player) return;
+            player.fps = parseInt(newFps, 10);
+            if (player.playing) {
+                startPlayer(id); // Herstart met nieuwe snelheid
+            }
+        };
 
         function escapeHtml(str) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        // Start Auth bij laden
         initAuthAndLivefeed();
 
-        /* --- STREAMING_CHUNK:Adding User Section Navigation logic... --- */
         /* --- NAVIGATIE --- */
         window.showSection = function(sectionId) {
             document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
@@ -434,7 +570,6 @@
             showSection('gameScreen');
         };
 
-        /* --- STREAMING_CHUNK:Writing Eye Game dynamic matching logic... --- */
         /* --- GAME LOGIC --- */
         const eyeParts = [
             { term: 'Hoornvlies', desc: 'Het buitenste, heldere venster van je oog dat licht opvangt.' },
@@ -495,7 +630,6 @@
             }
         }
 
-        /* --- STREAMING_CHUNK:Writing Facts slideshow and Quiz logic... --- */
         /* --- WEETJES SLIDESHOW & QUIZ --- */
         const facts = [
             "Je ogen kunnen ongeveer 10 miljoen verschillende kleuren onderscheiden!",
@@ -563,7 +697,6 @@
             }, 1100);
         };
 
-        /* --- STREAMING_CHUNK:Writing Camera stream & Stopmotion frame rendering... --- */
         /* --- STOPMOTION STUDIO & CAMERA --- */
         let mediaStream = null;
         let facingMode = 'environment';
@@ -605,6 +738,16 @@
             initCamera();
         };
 
+        // Comprimeer foto's naar lichtgewicht formaat voor snelle opslag
+        function compressImageDataUrl(videoEl) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', 0.55); // Optimale compressie
+        }
+
         window.captureFrame = function() {
             const video = document.getElementById('cameraFeed');
             if (!video || !video.videoWidth) {
@@ -612,16 +755,8 @@
                 return;
             }
 
-            // Downscale frame to keep size manageable for Firestore base64
-            const canvas = document.createElement('canvas');
-            canvas.width = 480;
-            canvas.height = 360;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-            capturedFrames.push(dataUrl);
-
+            const frameData = compressImageDataUrl(video);
+            capturedFrames.push(frameData);
             renderFramesReel();
         };
 
@@ -657,8 +792,8 @@
             renderFramesReel();
         };
 
-        /* --- STREAMING_CHUNK:Writing Video Generation and Realtime Livefeed publishing logic... --- */
-        window.renderAndPublishVideo = function() {
+        /* --- FOTO'S ACHTER ELKAAR PLAKKEN & PUBLICEREN --- */
+        window.publishStopmotionMovie = async function() {
             if (capturedFrames.length === 0) {
                 showToast("Geen foto's", "Maak eerst een paar foto's voor je filmpje!", "⚠️");
                 return;
@@ -668,73 +803,31 @@
             renderBtn.disabled = true;
             renderBtn.innerText = "⏳ Bezig met verwerken...";
 
-            const canvas = document.createElement('canvas');
-            canvas.width = 480;
-            canvas.height = 360;
-            const ctx = canvas.getContext('2d');
-
-            const stream = canvas.captureStream(3); // 3 FPS
-            let recorder;
             try {
-                recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-            } catch (e) {
-                recorder = new MediaRecorder(stream);
-            }
+                if (currentUser) {
+                    const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos');
+                    
+                    // Stuur de complete foto-reeks naar de database
+                    await addDoc(videosCol, {
+                        username: currentUsername || 'Anonieme Maker',
+                        frames: capturedFrames, // Foto's achter elkaar
+                        createdAt: Date.now()
+                    });
 
-            const chunks = [];
-            recorder.ondataavailable = e => chunks.push(e.data);
-
-            recorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                
-                // Converteer naar Base64 dataURL voor Firestore
-                const reader = new FileReader();
-                reader.onloadend = async () => {
-                    const base64Video = reader.result;
-
-                    // Publish to Firestore public collection
-                    try {
-                        if (currentUser) {
-                            const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos');
-                            await addDoc(videosCol, {
-                                username: currentUsername || 'Anonieme Maker',
-                                videoData: base64Video,
-                                createdAt: Date.now()
-                            });
-                            showToast("Gelukt! 🚀", "Je filmpje is gemaakt en direct geplaatst in de livefeed!", "🎬");
-                        } else {
-                            showToast("Lokaal opgeslagen", "Je filmpje is klaar!", "🎬");
-                        }
-                    } catch (err) {
-                        console.error("Fout bij opslaan in Firebase:", err);
-                        showToast("Opslaan mislukt", "Kon het filmpje niet delen in de feed.", "❌");
-                    } finally {
-                        renderBtn.disabled = false;
-                        renderBtn.innerText = "🎥 Genereer & Deel Film";
-                    }
-                };
-                reader.readAsDataURL(blob);
-            };
-
-            recorder.start();
-
-            let frameIdx = 0;
-            const interval = setInterval(() => {
-                if (frameIdx >= capturedFrames.length) {
-                    clearInterval(interval);
-                    recorder.stop();
-                    return;
+                    showToast("Filmpje Geplaatst! 🚀", `Je film van ${capturedFrames.length} foto's staat nu live in de feed!`, "🎬");
+                    clearFrames(); // Maak de fotostrip na plaatsing weer leeg voor het volgende filmpje
+                } else {
+                    showToast("Fout", "Niet verbonden met de database.", "❌");
                 }
-                const img = new Image();
-                img.onload = () => {
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                };
-                img.src = capturedFrames[frameIdx];
-                frameIdx++;
-            }, 333); // ~3 fps per frame
+            } catch (err) {
+                console.error("Fout bij opslaan:", err);
+                showToast("Opslaan mislukt", "Kon het filmpje niet delen. Mogelijk zijn er teveel foto's gemaakt.", "❌");
+            } finally {
+                renderBtn.disabled = false;
+                renderBtn.innerText = "🎥 Plak Foto's & Deel Film";
+            }
         };
 
-        // Init op pagina-lading
         window.onload = () => {
             startGame();
             updateSlide();
