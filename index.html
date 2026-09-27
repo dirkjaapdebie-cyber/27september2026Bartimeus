@@ -47,7 +47,7 @@
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform transition-all">
             <div id="toastIcon" class="text-4xl mb-3">✨</div>
             <h3 id="toastTitle" class="text-xl font-bold text-slate-800 mb-2">Melding</h3>
-            <p id="toastMessage" class="text-slate-600 mb-5">Bericht inhoud...</p>
+            <p id="toastMessage" class="text-slate-600 mb-5 text-sm">Bericht inhoud...</p>
             <button onclick="closeToast()" class="btn-touch w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-md">
                 Begrepen! 👍
             </button>
@@ -59,7 +59,7 @@
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform transition-all">
             <div class="text-4xl mb-3">⚠️</div>
             <h3 class="text-xl font-bold text-slate-800 mb-2">Database Leegmaken?</h3>
-            <p class="text-slate-600 mb-5 text-sm">Weet je zeker dat je <strong>alle gemaakte filmpjes uit de database</strong> wilt verwijderen? Dit kan niet ongedaan worden gemaakt.</p>
+            <p class="text-slate-600 mb-5 text-sm">Weet je zeker dat je <strong>alle gemaakte filmpjes</strong> wilt verwijderen? Dit kan niet ongedaan worden gemaakt.</p>
             <div class="flex gap-2">
                 <button onclick="closeConfirmModal()" class="btn-touch flex-1 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-300">
                     Annuleren
@@ -90,7 +90,7 @@
                     </select>
                 </div>
                 <button onclick="openConfirmModal()" class="btn-touch bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg border border-rose-500 flex items-center gap-1 shadow-sm">
-                    🧹 Wis Database Filmpjes
+                    🧹 Wis Alle Filmpjes
                 </button>
             </div>
         </header>
@@ -274,11 +274,11 @@
                         <p class="text-xs text-slate-500">Iedereen kan elkaars filmpjes hier direct afspelen!</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ● Live verbonden
+                        <span id="connectionBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            ● Actief
                         </span>
                         <button onclick="openConfirmModal()" class="btn-touch text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold px-2.5 py-1 rounded-lg border border-rose-200">
-                            🧹 Wis Database
+                            🧹 Wis Alles
                         </button>
                     </div>
                 </div>
@@ -299,7 +299,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        /* --- GLOBAL APP CONFIG & FIREBASE INIT --- */
+        /* --- GLOBAL CONFIG & FIREBASE INIT --- */
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'oog-app-default';
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
@@ -312,13 +312,23 @@
                 appId: "1:123456789:web:123456789"
             };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        let app = null;
+        let auth = null;
+        let db = null;
+        let isFirebaseActive = false;
 
-        let currentUser = null;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.warn("Firebase initialisatie overgeslagen, fallback op lokale modus.");
+        }
+
+        // Gegarandeerd een actieve gebruiker (ook als server offline is)
+        let currentUser = { uid: 'anon-' + Math.random().toString(36).substring(2, 9) };
         let currentUsername = "Anonieme Maker";
-        const activePlayers = {}; // Bewaart actieve timers voor afspelen in feed
+        const activePlayers = {}; 
 
         /* --- UI MODALS --- */
         window.showToast = function(title, message, icon = '✨') {
@@ -340,38 +350,45 @@
             document.getElementById('confirmModal').classList.add('hidden');
         };
 
-        /* --- DATABASE WISSEN (NA DE LES) --- */
+        /* --- DATABASE WISSEN --- */
         window.executeClearDatabase = async function() {
             closeConfirmModal();
             try {
-                const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos');
-                const snapshot = await getDocs(videosCol);
-                
-                if (snapshot.empty) {
-                    showToast("Database is leeg", "Er staan al geen filmpjes in de database.", "ℹ️");
-                    return;
+                if (isFirebaseActive && db) {
+                    const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos');
+                    const snapshot = await getDocs(videosCol);
+                    const deletePromises = [];
+                    snapshot.forEach((docSnapshot) => {
+                        deletePromises.push(deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos', docSnapshot.id)));
+                    });
+                    await Promise.all(deletePromises);
                 }
-
-                // Stop actieve spelers
+                
+                // Wis ook lokale opslag
+                localStorage.removeItem('local_stopmotion_videos');
                 Object.keys(activePlayers).forEach(id => clearInterval(activePlayers[id].interval));
-
-                const deletePromises = [];
-                snapshot.forEach((docSnapshot) => {
-                    deletePromises.push(deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos', docSnapshot.id)));
-                });
-
-                await Promise.all(deletePromises);
-                showToast("Database Gewist! 🧹", "Alle filmpjes zijn succesvol uit de database verwijderd.", "✅");
+                renderVideoFeed([]);
+                
+                showToast("Alles Gewist! 🧹", "Alle filmpjes zijn succesvol verwijderd.", "✅");
             } catch (err) {
-                console.error("Fout bij leegmaken database:", err);
-                showToast("Fout bij leegmaken", "Kon de filmpjes niet verwijderen uit de database.", "❌");
+                console.error("Fout bij leegmaken:", err);
+                showToast("Fout bij leegmaken", "Kon de filmpjes niet allemaal verwijderen.", "❌");
             }
         };
 
         window.deleteSingleVideo = async function(docId) {
             try {
                 if (activePlayers[docId]) clearInterval(activePlayers[docId].interval);
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos', docId));
+
+                if (isFirebaseActive && db && !docId.startsWith('local-')) {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos', docId));
+                } else {
+                    // Wis uit lokale opslag
+                    let localVids = JSON.parse(localStorage.getItem('local_stopmotion_videos') || '[]');
+                    localVids = localVids.filter(v => v.id !== docId);
+                    localStorage.setItem('local_stopmotion_videos', JSON.stringify(localVids));
+                    renderVideoFeed(localVids);
+                }
                 showToast("Verwijderd", "Filmpje is succesvol verwijderd.", "🗑️");
             } catch (err) {
                 console.error("Fout bij verwijderen filmpje:", err);
@@ -381,23 +398,33 @@
 
         /* --- AUTH & LIVEFEED LISTENER --- */
         async function initAuthAndLivefeed() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
-                    currentUser = cred.user;
-                } else {
-                    const cred = await signInAnonymously(auth);
-                    currentUser = cred.user;
+            if (auth) {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                        currentUser = cred.user;
+                        isFirebaseActive = true;
+                    } else {
+                        const cred = await signInAnonymously(auth);
+                        currentUser = cred.user;
+                        isFirebaseActive = true;
+                    }
+                } catch (err) {
+                    console.warn("Firebase Auth kon niet verbinden met cloud, app werkt in lokale modus:", err);
+                    isFirebaseActive = false;
                 }
+            }
+
+            if (isFirebaseActive && db) {
                 listenToLivefeed();
-            } catch (err) {
-                console.error("Firebase Auth Fout:", err);
+            } else {
+                // Laad lokale filmpjes
+                const localVids = JSON.parse(localStorage.getItem('local_stopmotion_videos') || '[]');
+                renderVideoFeed(localVids);
             }
         }
 
         function listenToLivefeed() {
-            if (!currentUser) return;
-
             const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos');
             
             onSnapshot(videosCol, (snapshot) => {
@@ -406,11 +433,16 @@
                     videos.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Nieuwste filmpjes bovenaan
-                videos.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-                renderVideoFeed(videos);
+                // Combineer cloud + eventuele lokale filmpjes
+                const localVids = JSON.parse(localStorage.getItem('local_stopmotion_videos') || '[]');
+                const combined = [...videos, ...localVids];
+                combined.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+                renderVideoFeed(combined);
             }, (error) => {
-                console.error("Fout bij ophalen livefeed:", error);
+                console.warn("Fout bij livefeed luisteren, overstappen op lokale feed:", error);
+                const localVids = JSON.parse(localStorage.getItem('local_stopmotion_videos') || '[]');
+                renderVideoFeed(localVids);
             });
         }
 
@@ -536,7 +568,7 @@
             if (!player) return;
             player.fps = parseInt(newFps, 10);
             if (player.playing) {
-                startPlayer(id); // Herstart met nieuwe snelheid
+                startPlayer(id);
             }
         };
 
@@ -738,14 +770,13 @@
             initCamera();
         };
 
-        // Comprimeer foto's naar lichtgewicht formaat voor snelle opslag
         function compressImageDataUrl(videoEl) {
             const canvas = document.createElement('canvas');
             canvas.width = 400;
             canvas.height = 300;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-            return canvas.toDataURL('image/jpeg', 0.55); // Optimale compressie
+            return canvas.toDataURL('image/jpeg', 0.55);
         }
 
         window.captureFrame = function() {
@@ -792,7 +823,7 @@
             renderFramesReel();
         };
 
-        /* --- FOTO'S ACHTER ELKAAR PLAKKEN & PUBLICEREN --- */
+        /* --- FOTO'S PUBLICEREN --- */
         window.publishStopmotionMovie = async function() {
             if (capturedFrames.length === 0) {
                 showToast("Geen foto's", "Maak eerst een paar foto's voor je filmpje!", "⚠️");
@@ -803,29 +834,41 @@
             renderBtn.disabled = true;
             renderBtn.innerText = "⏳ Bezig met verwerken...";
 
-            try {
-                if (currentUser) {
-                    const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos');
-                    
-                    // Stuur de complete foto-reeks naar de database
-                    await addDoc(videosCol, {
-                        username: currentUsername || 'Anonieme Maker',
-                        frames: capturedFrames, // Foto's achter elkaar
-                        createdAt: Date.now()
-                    });
+            const newVideoData = {
+                username: currentUsername || 'Anonieme Maker',
+                frames: capturedFrames,
+                createdAt: Date.now()
+            };
 
-                    showToast("Filmpje Geplaatst! 🚀", `Je film van ${capturedFrames.length} foto's staat nu live in de feed!`, "🎬");
-                    clearFrames(); // Maak de fotostrip na plaatsing weer leeg voor het volgende filmpje
-                } else {
-                    showToast("Fout", "Niet verbonden met de database.", "❌");
+            let publishedSuccessfully = false;
+
+            // Poging 1: Bewaren in Firebase Cloud Database
+            if (isFirebaseActive && db) {
+                try {
+                    const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'stopmotion_videos');
+                    await addDoc(videosCol, newVideoData);
+                    publishedSuccessfully = true;
+                } catch (err) {
+                    console.warn("Firebase opslag mislukt, schakelt over op lokale opslag:", err);
                 }
-            } catch (err) {
-                console.error("Fout bij opslaan:", err);
-                showToast("Opslaan mislukt", "Kon het filmpje niet delen. Mogelijk zijn er teveel foto's gemaakt.", "❌");
-            } finally {
-                renderBtn.disabled = false;
-                renderBtn.innerText = "🎥 Plak Foto's & Deel Film";
             }
+
+            // Poging 2: Fallback Opslaan in lokale browseropslag (als Firebase faalt of uit staat)
+            if (!publishedSuccessfully) {
+                const localVids = JSON.parse(localStorage.getItem('local_stopmotion_videos') || '[]');
+                const localItem = { id: 'local-' + Date.now(), ...newVideoData };
+                localVids.unshift(localItem);
+                localStorage.setItem('local_stopmotion_videos', JSON.stringify(localVids));
+                
+                // Direct renderen op het scherm
+                renderVideoFeed(localVids);
+            }
+
+            showToast("Filmpje Geplaatst! 🚀", `Je film van ${capturedFrames.length} foto's staat nu live in de feed!`, "🎬");
+            clearFrames();
+
+            renderBtn.disabled = false;
+            renderBtn.innerText = "🎥 Plak Foto's & Deel Film";
         };
 
         window.onload = () => {
